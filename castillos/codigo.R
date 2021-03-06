@@ -18,7 +18,7 @@ st_crs(canarias_new) <- st_crs(dat)
 dat2 <- rbind(dat %>% filter(NAME_1 != "Islas Canarias"), canarias_new)
 
 #Cargamos los datos de castillos por provincias (disponibles en esta misma carpeta)
-cast <- read.csv("datos.csv")
+cast <- read.csv("datos.csv", sep = ";", dec = ",", header = T)
 
 #### GRÁFICO DE CASTILLOS POR HABITANTE ####
 
