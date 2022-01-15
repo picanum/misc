@@ -19,6 +19,7 @@ library(ggtext)
 
 #### CÓDIGO DE R A PARTIR DE AQUÍ ####
 
+# Funciones para procesar el texto
 preprocesamiento <- function(x) removePunctuation(removeNumbers(tolower(x)))
 quitaracentos <- function(x){
   x <- str_replace_all(x, "á", "a")
@@ -28,9 +29,12 @@ quitaracentos <- function(x){
   x <- str_replace_all(x, "ú", "u")
 }
 
-#U+0001F7E9: verde
-#U+2B1C: blanco
-#U+0001F7E8: amarillo
+# Función 'tablero' para procesar el tablero tuiteado por un jugador y convertirlo en una tabla
+# La función va inspeccionando cada palabra hasta que encuentra alguna que sea un cuadrado
+# Se hace aplicando primero stringi::stri_unescape_unicode para pasar los emojis a texto
+# U+0001F7E9: verde
+# U+2B1C: blanco (gris)
+# U+0001F7E8: amarillo
 
 tablero <- function(x){
   x1 <- str_split(as.character(x), " ")
@@ -56,24 +60,30 @@ tablero <- function(x){
   return(x3)
 }
 
-#Hasta las 11:45 del 9 de enero
+# Cargamos los tweets en R (yo lo he hecho desde varios archivos porque he hecho la extracción en varias etapas)
+
 dat <- rbind(
   read.csv("wordle1.csv", encoding = "UTF-8"),
   read.csv("wordle2.csv", encoding = "UTF-8"),
   read.csv("wordle3.csv", encoding = "UTF-8")
 )
 
+# Quitamos tweets duplicados
 dat <- dat[-which(duplicated(dat$id)),]
 
+# Nos quedamos con los tweets del Wordle en español por un lado, y los tweets del Wordle en inglés por otro
+# (ahora mismo quizá habría que modificar estas líneas ya que han salido más Wordles en otros idiomas)
 dat_esp <- dat[which(str_detect(dat$tweet, "ordle \\(ES\\)")),]
 dat_eng <- dat[-which(str_detect(dat$tweet, "ordle \\(ES\\)")),]
 
+# Cargamos los tweets del Wordle en catalán. No debería haber solapamiento ya que éstos salen en un formato distinto
+# (salen como #WordleCAT en lugar de 'Wordle 296 3/6 ...')
 dat_cat <- read.csv("wordle_cat.csv", encoding = "UTF-8")
 
 dat_cat <- dat_cat[which(str_detect(dat_cat$tweet, "/6")),]
 
-
-
+# Procesamos los tweets del Wordle en español para llegar hasta el punto en el que aparece el '/6'
+# y así poder quedarnos con el caracter que hay justo detrás (que debería ser el número de turnos que han tardado)
 d <- tolower(gsub('\\p{So}|\\p{Cn}','', 
                   as.character(dat_esp$tweet[which(str_detect(dat_esp$tweet, "/6"))]), perl = T))
 d <- quitaracentos(d)
@@ -82,6 +92,8 @@ loquehay <- sapply(1:length(d), function(i) str_locate_all(d[i], "/6")[[1]][1,])
 caracter_detras_esp <- sapply(1:length(d), 
                               function(i) str_sub(d[i], loquehay[i]-1, loquehay[i]-1))
 
+# Procesamos los tweets del Wordle en inglés para llegar hasta el punto en el que aparece el '/6'
+# y así poder quedarnos con el caracter que hay justo detrás (que debería ser el número de turnos que han tardado)
 d <- tolower(gsub('\\p{So}|\\p{Cn}','', 
                   as.character(dat_eng$tweet[which(str_detect(dat_eng$tweet, "/6"))]), perl = T))
 d <- quitaracentos(d)
@@ -89,7 +101,9 @@ d <- quitaracentos(d)
 loquehay <- sapply(1:length(d), function(i) str_locate_all(d[i], "/6")[[1]][1,])[1,]
 caracter_detras_eng <- sapply(1:length(d), 
                           function(i) str_sub(d[i], loquehay[i]-1, loquehay[i]-1))
-
+                              
+# Procesamos los tweets del Wordle en catalán para llegar hasta el punto en el que aparece el '/6'
+# y así poder quedarnos con el caracter que hay justo detrás (que debería ser el número de turnos que han tardado)
 d <- tolower(gsub('\\p{So}|\\p{Cn}','', 
                   as.character(dat_cat$tweet[which(str_detect(dat_cat$tweet, "/6"))]), perl = T))
 d <- quitaracentos(d)
@@ -98,10 +112,9 @@ loquehay <- sapply(1:length(d), function(i) str_locate_all(d[i], "/6")[[1]][1,])
 caracter_detras_cat <- sapply(1:length(d), 
                               function(i) str_sub(d[i], loquehay[i]-1, loquehay[i]-1))
 
-caracter_detras_esp %>% as_tibble() %>% filter(value %in% 1:6) %>%
-  group_by(value) %>% summarise(count = n()) %>%
-  ggplot(aes(x = value, y = 100*count/sum(count))) + geom_col()
-
+# Gráfico comparando el Wordle en inglés hecho por gente que tuitea en inglés
+# versus el Wordle en inglés pero hecho por gente que tuitea en español
+                              
 ragg::agg_png("comp_en_es.png", res = 300, width = 1241*3, height = 680*3)
 caracter_detras_eng %>% as_tibble() %>%
   mutate(len = dat_eng$language[which(str_detect(dat_eng$tweet, "/6"))]) %>%
@@ -142,6 +155,9 @@ caracter_detras_eng %>% as_tibble() %>%
                     size = 5, family = "Roboto Condensed", col = "grey65")
 invisible(dev.off())
 
+# Gráfico comparando el Wordle en inglés hecho por gente que tuitea en español
+# versus el Wordle en español
+                              
 ragg::agg_png("comp_es_ES.png", res = 300, width = 1241*3, height = 680*3)
 caracter_detras_eng %>% as_tibble() %>%
   mutate(len = dat_eng$language[which(str_detect(dat_eng$tweet, "/6"))]) %>%
@@ -187,6 +203,9 @@ caracter_detras_eng %>% as_tibble() %>%
                     size = 5, family = "Roboto Condensed", col = "grey65") +
   scale_y_continuous(limits = c(0, 32))
 invisible(dev.off())
+                              
+# Gráfico comparando el Wordle en inglés hecho por gente que tuitea en inglés
+# versus el Wordle en español
 
 ragg::agg_png("comp_eng_ES.png", res = 300, width = 1241*3, height = 680*3)
 caracter_detras_eng %>% as_tibble() %>%
@@ -234,6 +253,8 @@ caracter_detras_eng %>% as_tibble() %>%
   scale_y_continuous(limits = c(0, 35))
 invisible(dev.off())
 
+# Gráfico comparando el Wordle en español con el Wordle en catalán
+                              
 ragg::agg_png("comp_CAT_ES.png", res = 300, width = 1241*3, height = 680*3)
 caracter_detras_esp %>% as_tibble() %>% filter(value %in% 1:6) %>%
   group_by(value) %>% summarise(count = n()) %>% mutate(count = 100*count/sum(count)) %>%
@@ -273,14 +294,20 @@ caracter_detras_esp %>% as_tibble() %>% filter(value %in% 1:6) %>%
   scale_y_continuous(limits = c(0, 35))
 invisible(dev.off())
 
+                              
+# Análisis de los tableros que aparecen en los tweets (sólo para el Wordle en español)
+
+# Aplicamos la función 'tablero' a los tweets del Wordle en español                              
 tableros_esp <- lapply(dat_esp$tweet[which(str_detect(dat_esp$tweet, "/6"))], tablero)
 
+# Eliminamos los tweets donde el caracter que acompaña al '/6' no sea un número del 1 al 6
 aeliminar1 <- which(caracter_detras_esp %in% 1:6 == F)
 
 tableros_esp <- tableros_esp[-aeliminar1]
 
 nuevo_vector1 <- caracter_detras_esp[-aeliminar1]
 
+# Eliminamos también los tweets que no tengan ningún tablero
 aeliminar2 <- which(sapply(1:length(tableros_esp), 
                           function(i) length(dim(tableros_esp[[i]]))) == 0)
 
@@ -288,15 +315,20 @@ tableros_esp <- tableros_esp[-aeliminar2]
 
 nuevo_vector2 <- nuevo_vector1[-aeliminar2]
 
+# Una vez obtenidos, nos quedamos únicamente con tantas filas del tablero como indique la cifra que acompaña al '/6'
+# (por defecto la función tablero lee 6 filas, tenga la longitud que tenga)
 for(i in 1:length(tableros_esp)){
   tableros_esp[[i]] <- tableros_esp[[i]][1:as.numeric(as.character(nuevo_vector2[i])),]
   tableros_esp[[i]][,"id"] <- i
   tableros_esp[[i]][,"fila"] <- 1:nrow(tableros_esp[[i]])
 }
 
+# Unimos todos los tableros en un dataset
 dat_tableros_esp <-
   do.call(rbind.data.frame, 
           tableros_esp[-which(sapply(1:length(tableros_esp), function(i) ncol(tableros_esp[[i]])) != 7)])
+
+# Gráfico con los porcentajes en los que se acierta cada casilla del tablero
 
 ragg::agg_png("tablero_ES.png", res = 300, width = 733*3, height = 1000*3)
 dat_tableros_esp %>% pivot_longer(-c("id", "fila"), names_to = "columna", values_to = "color") %>%
@@ -310,7 +342,6 @@ dat_tableros_esp %>% pivot_longer(-c("id", "fila"), names_to = "columna", values
   group_by(fila) %>%
   mutate(fila = paste0("Intento ", fila, " (personas que han llegado = ", suma_fila[1],")"),
          columna = substr(columna, 2,2)) %>%
-  #mutate(total = blanco + verde + amarillo) %>%
   ggplot(aes(x = columna, y = n, fill = colores,
              label = round(100*n, 1))) + geom_col() +
   scale_fill_manual(values = c("grey85", "gold", "darkgreen")) +
@@ -327,6 +358,8 @@ dat_tableros_esp %>% pivot_longer(-c("id", "fila"), names_to = "columna", values
         text = element_text(family = "Roboto Condensed"),
         plot.title = element_markdown())
 invisible(dev.off())
+
+# Gráfico con la matriz de transición sobre el paso de Y casillas verdes a X casillas verdes
 
 dat_tableros_esp %>% pivot_longer(-c("id", "fila"), names_to = "columna", values_to = "color") %>%
   group_by(id, fila) %>% summarise(num_verdes = sum(color == "verde"),
@@ -352,6 +385,8 @@ dat_tableros_esp %>% pivot_longer(-c("id", "fila"), names_to = "columna", values
        y = "Estado actual (número de casillas verdes)",
        title = "Si en un intento consigues Y casillas verdes, ¿cuál es la probabilidad\nde que al intento siguiente consigas X casillas verdes?\nDatos del Wordle en español de wordle.danielfrg.com") +
   ggsave("matriz_verdes.png", dpi = 300, height = 9.3, width = 9.3)
+
+# Gráfico con la matriz de transición sobre el paso de Y casillas no grises a X casillas no grises
 
 dat_tableros_esp %>% pivot_longer(-c("id", "fila"), names_to = "columna", values_to = "color") %>%
   group_by(id, fila) %>% summarise(num_verdes = sum(color == "verde"),
