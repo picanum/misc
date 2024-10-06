@@ -15,7 +15,8 @@ marca_tiempo <- posts_curious$posts[[length(posts_curious$posts)]]$timestamp
 
 #Estas lineas se tienen que ejecutar solo si tienes mas de 100 preguntas respondidas en tu Curious
 if(n_resp > 100){
-  k <- 2
+  k <- 2   # Este k sirve para poder cambiar el punto de inicio del bucle, que puede ser util cuando éste se pare
+           # (lo cual puede pasar porque no se pueda entrar a la web, que esta fallando bastante)
   for(i in k:ceiling(n_resp/100)){
     temp <- fromJSON(file = paste0(enlace, "&max_timestamp=", marca_tiempo))
     lista[[i]] <- temp
