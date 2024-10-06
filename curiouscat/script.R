@@ -11,14 +11,18 @@ n_resp <- posts_curious$userData$answers
 
 lista <- list()
 lista[[1]] <- posts_curious
-marca_tiempo <- posts_curious$posts[[100]]$timestamp
-k <- 2
-for(i in k:ceiling(n_resp/100)){
-  temp <- fromJSON(file = paste0(enlace, "&max_timestamp=", marca_tiempo))
-  lista[[i]] <- temp
-  marca_tiempo <- temp$posts[[length(temp$posts)]]$timestamp
-  cat("Iteración nº ", i, " concluida. A mimir 10 segundos.\n")
-  Sys.sleep(10)
+marca_tiempo <- posts_curious$posts[[length(posts_curious$posts)]]$timestamp
+
+#Estas lineas se tienen que ejecutar solo si tienes mas de 100 preguntas respondidas en tu Curious
+if(n_resp > 100){
+  k <- 2
+  for(i in k:ceiling(n_resp/100)){
+    temp <- fromJSON(file = paste0(enlace, "&max_timestamp=", marca_tiempo))
+    lista[[i]] <- temp
+    marca_tiempo <- temp$posts[[length(temp$posts)]]$timestamp
+    cat("Iteración nº ", i, " concluida. A mimir 10 segundos.\n")
+    Sys.sleep(10)
+  }
 }
 
 #Paso 2: pasar todos esos datos a un conjunto de datos exportable
